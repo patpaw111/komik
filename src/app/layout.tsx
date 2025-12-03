@@ -51,6 +51,7 @@ export default function RootLayout({
     <html lang="id">
       {/* 3. Masukkan variable font di sini & hapus bg-base-dark */}
       <body
+        suppressHydrationWarning
         className={`
           ${geistSans.variable} ${geistMono.variable} 
           antialiased 

@@ -1,0 +1,13 @@
+1. Lanjutin API untuk chapters (chapter komik)
+Bikin GET /api/chapters?series_id=..., POST, PATCH, DELETE.
+Pattern-nya mirip series, cuma ada relasi ke series_id.
+2. Rapihin validasi & error handling di API series
+Tambah validasi pakai Zod (cek panjang title, format status, dsb).
+Bikin format error yang konsisten (misal { message, errors: {...} }).
+3. Mulai bikin Dashboard Admin sederhana
+Halaman Next.js (misal /dashboard-admin/series) yang:
+Tampil list komik (fetch GET /api/series).
+Ada form tambah komik (call POST /api/series).
+Tombol edit & delete.
+4. Tambah dokumentasi API di Postman untuk semua endpoint series
+Kita lengkapin: POST, GET {id}, PATCH, DELETE (description + example).
