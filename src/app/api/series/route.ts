@@ -1,34 +1,57 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
+// helper kecil biar response API konsisten
+function ok<T>(data: T, meta?: unknown) {
+  return NextResponse.json(
+    meta ? { success: true, data, meta } : { success: true, data }
+  );
+}
+
+function fail(message: string, status = 400, details?: unknown) {
+  return NextResponse.json(
+    { success: false, message, details },
+    { status }
+  );
+}
+
 // GET /api/series
 // ambil daftar komik (series) dengan pagination sederhana
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const page = Number(searchParams.get("page") ?? "1");
-  const limit = Number(searchParams.get("limit") ?? "20");
-  const offset = (page - 1) * limit; // hitung offset biar bisa paginasi
+  try {
+    const { searchParams } = new URL(request.url);
+    const rawPage = Number(searchParams.get("page") ?? "1");
+    const rawLimit = Number(searchParams.get("limit") ?? "20");
 
-  const { data, error, count } = await supabaseAdmin
-    .from("series")
-    .select("*", { count: "exact" })
-    .order("created_at", { ascending: false })
-    .range(offset, offset + limit - 1);
+    // jaga-jaga kalau user kirim page/limit aneh
+    const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
+    const limit =
+      Number.isFinite(rawLimit) && rawLimit > 0 && rawLimit <= 100
+        ? rawLimit
+        : 20;
 
-  if (error) {
-    console.error("[GET /api/series] error", error);
-    return NextResponse.json(
-      { message: "Gagal mengambil data series", error: error.message },
-      { status: 500 }
-    );
+    const offset = (page - 1) * limit; // hitung offset biar bisa paginasi
+
+    const { data, error, count } = await supabaseAdmin
+      .from("series")
+      .select("*", { count: "exact" })
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) {
+      console.error("[GET /api/series] error", error);
+      return fail("Gagal mengambil data series", 500, error.message);
+    }
+
+    return ok(data ?? [], {
+      page,
+      limit,
+      total: count ?? 0,
+    });
+  } catch (err: any) {
+    console.error("[GET /api/series] unexpected error", err);
+    return fail("Terjadi kesalahan saat mengambil data series", 500);
   }
-
-  return NextResponse.json({
-    data,
-    page,
-    limit,
-    total: count ?? 0,
-  });
 }
 
 // POST /api/series
@@ -37,17 +60,26 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    if (!body.title || !body.slug) {
-      return NextResponse.json(
-        { message: "title dan slug wajib diisi" },
-        { status: 400 }
-      );
+    // validasi input dasar
+    const title = String(body.title ?? "").trim();
+    const slug = String(body.slug ?? "").trim();
+
+    if (!title || !slug) {
+      return fail("title dan slug wajib diisi", 400);
+    }
+
+    if (title.length > 255) {
+      return fail("title kepanjangan (maksimal 255 karakter)", 400);
+    }
+
+    if (slug.includes(" ")) {
+      return fail("slug tidak boleh mengandung spasi", 400);
     }
 
     const payload = {
-      title: body.title,
+      title,
       alternative_title: body.alternative_title ?? null,
-      slug: body.slug,
+      slug,
       description: body.description ?? null,
       format_id: body.format_id ?? null,
       status: body.status ?? "Ongoing",
@@ -62,20 +94,21 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error("[POST /api/series] error", error);
-      return NextResponse.json(
-        { message: "Gagal membuat series", error: error.message },
-        { status: 500 }
-      );
+
+      // handle case slug unik bentrok
+      if ((error as any).code === "23505") {
+        return fail("Slug sudah digunakan, pakai slug lain", 409);
+      }
+
+      return fail("Gagal membuat series", 500, error.message);
     }
 
-    return NextResponse.json(data, { status: 201 });
+    return NextResponse.json(
+      { success: true, data },
+      { status: 201 }
+    );
   } catch (err: any) {
     console.error("[POST /api/series] unexpected error", err);
-    return NextResponse.json(
-      { message: "Terjadi kesalahan saat membuat series" },
-      { status: 500 }
-    );
+    return fail("Terjadi kesalahan saat membuat series", 500);
   }
 }
-
-
