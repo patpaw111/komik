@@ -1,26 +1,119 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
+/* 1. Konfigurasi Tema (Mapping Variable ke Tailwind Class) */
+@theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  
+  --color-border: var(--border);
+  --color-input: var(--input);
+  
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+  
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
+/* 2. Variable Warna (CSS Variables) */
+:root {
+  /* --- LIGHT MODE SETTINGS --- */
+  --background: #ffffff;
+  --foreground: #09090b; /* Warna gelap defaultmu jadi warna teks di sini */
+
+  /* Primary Color: Biru Elektrik (Cocok untuk tombol 'Baca Sekarang') */
+  --primary: #2563eb; 
+  --primary-foreground: #ffffff;
+
+  /* Muted: Untuk teks sekunder (author, genre) */
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+
+  /* Card: Untuk kotak pembungkus komik */
+  --card: #ffffff;
+  --card-foreground: #09090b;
+
+  /* Border & Input */
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+
+  --radius: 0.5rem;
+}
+
+/* --- DARK MODE SETTINGS --- */
+/* Class .dark ini akan di-trigger oleh next-themes nanti */
+.dark {
+  /* Background #09090B sesuai permintaanmu */
+  --background: #09090b;
+  --foreground: #fafafa; /* Putih sedikit soft agar tidak sakit mata */
+
+  /* Primary di Dark Mode sedikit lebih terang agar kontras */
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
+
+  /* Card di Dark Mode sedikit lebih terang dari background utama */
+  --card: #18181b;
+  --card-foreground: #fafafa;
+
+  --border: #27272a;
+  --input: #27272a;
+}
+
+/* Supaya otomatis dark mode jika settingan OS user Dark Mode */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #09090b;
+    --foreground: #fafafa;
+    --primary: #3b82f6;
+    --primary-foreground: #ffffff;
+    --muted: #27272a;
+    --muted-foreground: #a1a1aa;
+    --card: #18181b;
+    --card-foreground: #fafafa;
+    --border: #27272a;
+    --input: #27272a;
   }
 }
 
+/* 3. Base Styles */
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  /* antialiased; */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 4. LOGO HELPER CLASS */
+/* Tambahkan class ini ke tag <img> logomu nanti */
+.logo-adaptive {
+  transition: filter 0.3s ease;
+}
+
+/* Logika: Jika di light mode, logo putihmu di-invert jadi hitam. */
+/* Jika di dark mode, logo tetap putih (filter none). */
+:root:not(.dark) .logo-adaptive {
+  filter: invert(1) hue-rotate(180deg) brightness(0.2); 
+}
+@media (prefers-color-scheme: dark) {
+  :root .logo-adaptive {
+    filter: none;
+  }
+}
+.dark .logo-adaptive {
+  filter: none;
 }
