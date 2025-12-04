@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
@@ -13,19 +13,34 @@ type SeriesItem = {
   status: string;
   cover_image_url: string | null;
   format_id: string | null;
+  formats: { id: string; name: string } | null;
+  series_genres: Array<{ genres: { id: string; name: string } }>;
+  series_authors: Array<{ authors: { id: string; name: string }; role: string }>;
 };
 
 type Props = {
   items: SeriesItem[];
   error?: string | null;
+  currentPage?: number;
+  totalPages?: number;
+  total?: number;
+  limit?: number;
 };
 
 type FormatOption = { id: string; name: string };
 type GenreOption = { id: string; name: string };
 type AuthorOption = { id: string; name: string };
 
-export function SeriesTable({ items, error }: Props) {
+export function SeriesTable({
+  items,
+  error,
+  currentPage = 1,
+  totalPages = 1,
+  total = 0,
+  limit = 20,
+}: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<SeriesItem | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -472,11 +487,18 @@ export function SeriesTable({ items, error }: Props) {
     }
   };
 
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > totalPages) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", newPage.toString());
+    router.push(`?${params.toString()}`);
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-muted-foreground">
-          Total series: {items.length}
+          Total series: {total} | Menampilkan {items.length} dari {total}
         </p>
         <div className="w-full max-w-xs">
           <input
@@ -499,60 +521,205 @@ export function SeriesTable({ items, error }: Props) {
           Belum ada series. Tambahkan series baru dari form di sebelah kanan.
         </p>
       ) : (
-        <div className="overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
+        <div className="overflow-x-auto -mx-2">
+          <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-border text-xs uppercase text-muted-foreground">
-                <th className="px-2 py-2">Judul</th>
-                <th className="px-2 py-2">Slug</th>
-                <th className="px-2 py-2">Status</th>
-                <th className="px-2 py-2 text-right">Aksi</th>
+                <th className="px-1.5 py-2 whitespace-nowrap">Cover</th>
+                <th className="px-1.5 py-2 whitespace-nowrap">Judul</th>
+                <th className="px-1.5 py-2 whitespace-nowrap">Judul Alternatif</th>
+                <th className="px-1.5 py-2 whitespace-nowrap">Slug</th>
+                <th className="px-1.5 py-2 whitespace-nowrap">Deskripsi</th>
+                <th className="px-1.5 py-2 whitespace-nowrap">Format</th>
+                <th className="px-1.5 py-2 whitespace-nowrap">Genre</th>
+                <th className="px-1.5 py-2 whitespace-nowrap">Author</th>
+                <th className="px-1.5 py-2 whitespace-nowrap">Status</th>
+                <th className="px-1.5 py-2 text-right whitespace-nowrap">Aksi</th>
               </tr>
             </thead>
             <tbody>
-              {filteredItems.map((item) => (
-                <tr
-                  key={item.id}
-                  className="border-b border-border/40 last:border-0"
-                >
-                  <td className="px-2 py-2">
-                    <div className="max-w-xs truncate font-medium">
-                      {item.title}
-                    </div>
-                  </td>
-                  <td className="px-2 py-2">
-                    <code className="rounded bg-muted px-2 py-0.5 text-[11px]">
-                      {item.slug}
-                    </code>
-                  </td>
-                  <td className="px-2 py-2">
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs">
-                      {item.status}
-                    </span>
-                  </td>
-                  <td className="px-2 py-2 text-right text-xs text-muted-foreground">
-                    <div className="inline-flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => startEdit(item)}
-                        className="rounded border border-border px-2 py-1 text-[11px] hover:bg-muted"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(item.id)}
-                        disabled={deletingId === item.id}
-                        className="rounded border border-red-500/60 px-2 py-1 text-[11px] text-red-400 hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {deletingId === item.id ? "Hapus..." : "Delete"}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {filteredItems.map((item) => {
+                const genres = item.series_genres
+                  ?.map((sg) => sg.genres?.name)
+                  .filter(Boolean) || [];
+                const authors = item.series_authors
+                  ?.map((sa) => sa.authors?.name)
+                  .filter(Boolean) || [];
+                const description = item.description
+                  ? item.description.length > 40
+                    ? `${item.description.substring(0, 40)}...`
+                    : item.description
+                  : "-";
+
+                return (
+                  <tr
+                    key={item.id}
+                    className="border-b border-border/40 last:border-0"
+                  >
+                    <td className="px-1.5 py-2">
+                      {item.cover_image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={item.cover_image_url}
+                          alt={item.title}
+                          className="h-14 w-10 rounded object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-14 w-10 items-center justify-center rounded bg-muted text-[8px] text-muted-foreground">
+                          No Cover
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-1.5 py-2">
+                      <div className="max-w-[120px] font-medium text-xs truncate" title={item.title}>
+                        {item.title}
+                      </div>
+                    </td>
+                    <td className="px-1.5 py-2">
+                      <div className="max-w-[120px] text-[10px] text-muted-foreground truncate" title={item.alternative_title || undefined}>
+                        {item.alternative_title || "-"}
+                      </div>
+                    </td>
+                    <td className="px-1.5 py-2">
+                      <code className="rounded bg-muted px-1.5 py-0.5 text-[9px] block truncate max-w-[100px]" title={item.slug}>
+                        {item.slug}
+                      </code>
+                    </td>
+                    <td className="px-1.5 py-2">
+                      <div className="max-w-[150px] text-[10px] text-muted-foreground truncate" title={item.description || undefined}>
+                        {description}
+                      </div>
+                    </td>
+                    <td className="px-1.5 py-2">
+                      <span className="text-[10px] whitespace-nowrap">
+                        {item.formats?.name || "-"}
+                      </span>
+                    </td>
+                    <td className="px-1.5 py-2">
+                      <div className="flex flex-wrap gap-0.5 max-w-[100px]">
+                        {genres.length > 0 ? (
+                          genres.slice(0, 2).map((genre, idx) => (
+                            <span
+                              key={idx}
+                              className="rounded bg-muted px-1 py-0.5 text-[9px]"
+                            >
+                              {genre}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground">-</span>
+                        )}
+                        {genres.length > 2 && (
+                          <span className="text-[9px] text-muted-foreground">
+                            +{genres.length - 2}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-1.5 py-2">
+                      <div className="flex flex-wrap gap-0.5 max-w-[100px]">
+                        {authors.length > 0 ? (
+                          authors.slice(0, 2).map((author, idx) => (
+                            <span
+                              key={idx}
+                              className="rounded bg-muted px-1 py-0.5 text-[9px]"
+                            >
+                              {author}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground">-</span>
+                        )}
+                        {authors.length > 2 && (
+                          <span className="text-[9px] text-muted-foreground">
+                            +{authors.length - 2}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-1.5 py-2">
+                      <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] whitespace-nowrap">
+                        {item.status}
+                      </span>
+                    </td>
+                    <td className="px-1.5 py-2 text-right text-xs text-muted-foreground">
+                      <div className="inline-flex gap-1">
+                        <button
+                          type="button"
+                          onClick={() => startEdit(item)}
+                          className="rounded border border-border px-1.5 py-0.5 text-[10px] hover:bg-muted"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(item.id)}
+                          disabled={deletingId === item.id}
+                          className="rounded border border-red-500/60 px-1.5 py-0.5 text-[10px] text-red-400 hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {deletingId === item.id ? "Hapus..." : "Del"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between border-t border-border pt-3">
+          <div className="text-xs text-muted-foreground">
+            Halaman {currentPage} dari {totalPages}
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage <= 1}
+              className="rounded border border-border px-3 py-1 text-xs hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Sebelumnya
+            </button>
+            <div className="flex gap-1">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum: number;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                return (
+                  <button
+                    key={pageNum}
+                    type="button"
+                    onClick={() => handlePageChange(pageNum)}
+                    className={`rounded border px-2 py-1 text-xs ${
+                      currentPage === pageNum
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border hover:bg-muted"
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage >= totalPages}
+              className="rounded border border-border px-3 py-1 text-xs hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Selanjutnya
+            </button>
+          </div>
         </div>
       )}
 

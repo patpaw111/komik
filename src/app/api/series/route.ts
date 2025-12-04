@@ -34,7 +34,15 @@ export async function GET(request: NextRequest) {
 
     const { data, error, count } = await supabaseAdmin
       .from("series")
-      .select("*", { count: "exact" })
+      .select(
+        `
+        *,
+        formats(id, name),
+        series_genres(genres(id, name)),
+        series_authors(authors(id, name), role)
+        `,
+        { count: "exact" }
+      )
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
