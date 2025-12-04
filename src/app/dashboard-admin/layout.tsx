@@ -14,7 +14,8 @@ const NAV_ITEMS = [
   { href: "/dashboard-admin/series", label: "Series" },
   { href: "/dashboard-admin/genres", label: "Genres" },
   { href: "/dashboard-admin/authors", label: "Authors" },
-  // nanti bisa ditambah: chapters, formats, users, dll
+  { href: "/dashboard-admin/formats", label: "Formats" },
+  // nanti bisa ditambah: chapters, users, dll
 ];
 
 export default function DashboardLayout({ children }: Props) {
