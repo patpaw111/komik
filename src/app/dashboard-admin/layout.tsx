@@ -13,7 +13,8 @@ type Props = {
 const NAV_ITEMS = [
   { href: "/dashboard-admin/series", label: "Series" },
   { href: "/dashboard-admin/genres", label: "Genres" },
-  // nanti bisa ditambah: chapters, formats, authors, users, dll
+  { href: "/dashboard-admin/authors", label: "Authors" },
+  // nanti bisa ditambah: chapters, formats, users, dll
 ];
 
 export default function DashboardLayout({ children }: Props) {
