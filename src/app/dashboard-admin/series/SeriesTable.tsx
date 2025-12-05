@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { MultiSelect } from "./MultiSelect";
 
 type SeriesItem = {
   id: string;
@@ -180,23 +181,6 @@ export function SeriesTable({
     }
   };
 
-  const toggleGenre = (id: string) => {
-    setSelectedGenreIds((prev) =>
-      prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id]
-    );
-  };
-
-  const toggleStoryAuthor = (id: string) => {
-    setStoryAuthorIds((prev) =>
-      prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id]
-    );
-  };
-
-  const toggleArtAuthor = (id: string) => {
-    setArtAuthorIds((prev) =>
-      prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id]
-    );
-  };
 
   // helper function untuk extract path dari Supabase Storage URL
   const extractPathFromUrl = (url: string): string | null => {
@@ -868,78 +852,39 @@ export function SeriesTable({
                 </div>
 
                 <div className="space-y-1">
-                  <p className="font-medium text-foreground">Genre</p>
-                  <div className="max-h-32 overflow-y-auto rounded border border-border bg-input px-2 py-2">
-                    {genres.length === 0 ? (
-                      <p className="text-[11px] text-muted-foreground">
-                        Belum ada genre di database.
-                      </p>
-                    ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {genres.map((g) => (
-                          <label key={g.id} className="inline-flex items-center gap-1">
-                            <input
-                              type="checkbox"
-                              checked={selectedGenreIds.includes(g.id)}
-                              onChange={() => toggleGenre(g.id)}
-                              className="h-3 w-3 rounded border-border bg-input text-primary"
-                            />
-                            <span className="text-[11px]">{g.name}</span>
-                          </label>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <label className="text-xs font-medium text-foreground">Genre</label>
+                  <MultiSelect
+                    options={genres}
+                    selectedIds={selectedGenreIds}
+                    onChange={setSelectedGenreIds}
+                    placeholder="Pilih genre..."
+                    emptyMessage="Belum ada genre di database."
+                    disabled={relationsLoading}
+                  />
                 </div>
 
                 <div className="space-y-1">
-                  <p className="font-medium text-foreground">Author (Story)</p>
-                  <div className="max-h-32 overflow-y-auto rounded border border-border bg-input px-2 py-2">
-                    {authors.length === 0 ? (
-                      <p className="text-[11px] text-muted-foreground">
-                        Belum ada author di database.
-                      </p>
-                    ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {authors.map((a) => (
-                          <label key={a.id} className="inline-flex items-center gap-1">
-                            <input
-                              type="checkbox"
-                              checked={storyAuthorIds.includes(a.id)}
-                              onChange={() => toggleStoryAuthor(a.id)}
-                              className="h-3 w-3 rounded border-border bg-input text-primary"
-                            />
-                            <span className="text-[11px]">{a.name}</span>
-                          </label>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <label className="text-xs font-medium text-foreground">Author (Story)</label>
+                  <MultiSelect
+                    options={authors}
+                    selectedIds={storyAuthorIds}
+                    onChange={setStoryAuthorIds}
+                    placeholder="Pilih author story..."
+                    emptyMessage="Belum ada author di database."
+                    disabled={relationsLoading}
+                  />
                 </div>
 
                 <div className="space-y-1">
-                  <p className="font-medium text-foreground">Author (Art)</p>
-                  <div className="max-h-32 overflow-y-auto rounded border border-border bg-input px-2 py-2">
-                    {authors.length === 0 ? (
-                      <p className="text-[11px] text-muted-foreground">
-                        Belum ada author di database.
-                      </p>
-                    ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {authors.map((a) => (
-                          <label key={a.id} className="inline-flex items-center gap-1">
-                            <input
-                              type="checkbox"
-                              checked={artAuthorIds.includes(a.id)}
-                              onChange={() => toggleArtAuthor(a.id)}
-                              className="h-3 w-3 rounded border-border bg-input text-primary"
-                            />
-                            <span className="text-[11px]">{a.name}</span>
-                          </label>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <label className="text-xs font-medium text-foreground">Author (Art)</label>
+                  <MultiSelect
+                    options={authors}
+                    selectedIds={artAuthorIds}
+                    onChange={setArtAuthorIds}
+                    placeholder="Pilih author art..."
+                    emptyMessage="Belum ada author di database."
+                    disabled={relationsLoading}
+                  />
                 </div>
               </div>
 

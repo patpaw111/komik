@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { MultiSelect } from "./MultiSelect";
 
 type FormState = {
   title: string;
@@ -101,23 +102,6 @@ export function SeriesCreateForm() {
     setCoverFile(file);
   };
 
-  const toggleGenre = (id: string) => {
-    setSelectedGenreIds((prev) =>
-      prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id]
-    );
-  };
-
-  const toggleStoryAuthor = (id: string) => {
-    setStoryAuthorIds((prev) =>
-      prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id]
-    );
-  };
-
-  const toggleArtAuthor = (id: string) => {
-    setArtAuthorIds((prev) =>
-      prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id]
-    );
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -311,26 +295,14 @@ export function SeriesCreateForm() {
       </div>
 
       <div className="space-y-1">
-        <p className="text-sm font-medium text-foreground">Genre</p>
-        <div className="flex flex-wrap gap-2 rounded border border-border bg-input px-2 py-2 text-xs">
-          {genres.length === 0 ? (
-            <span className="text-muted-foreground">
-              Belum ada data genre di database.
-            </span>
-          ) : (
-            genres.map((g) => (
-              <label key={g.id} className="inline-flex items-center gap-1">
-                <input
-                  type="checkbox"
-                  checked={selectedGenreIds.includes(g.id)}
-                  onChange={() => toggleGenre(g.id)}
-                  className="h-3 w-3 rounded border-border bg-input text-primary"
-                />
-                <span>{g.name}</span>
-              </label>
-            ))
-          )}
-        </div>
+        <label className="text-sm font-medium text-foreground">Genre</label>
+        <MultiSelect
+          options={genres}
+          selectedIds={selectedGenreIds}
+          onChange={setSelectedGenreIds}
+          placeholder="Pilih genre..."
+          emptyMessage="Belum ada data genre di database."
+        />
       </div>
 
       <div className="space-y-1">
@@ -368,52 +340,28 @@ export function SeriesCreateForm() {
         </select>
       </div>
 
-      <div className="space-y-2 border-t border-border pt-3 text-sm">
-        <p className="font-medium text-foreground">Author</p>
-        <div className="grid gap-2 md:grid-cols-2">
+      <div className="space-y-2 border-t border-border pt-3">
+        <p className="text-sm font-medium text-foreground">Author</p>
+        <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-1">
-            <p className="text-xs font-medium text-foreground">Story</p>
-            <div className="flex flex-wrap gap-2 rounded border border-border bg-input px-2 py-2 text-xs">
-              {authors.length === 0 ? (
-                <span className="text-muted-foreground">
-                  Belum ada data author di database.
-                </span>
-              ) : (
-                authors.map((a) => (
-                  <label key={a.id} className="inline-flex items-center gap-1">
-                    <input
-                      type="checkbox"
-                      checked={storyAuthorIds.includes(a.id)}
-                      onChange={() => toggleStoryAuthor(a.id)}
-                      className="h-3 w-3 rounded border-border bg-input text-primary"
-                    />
-                    <span>{a.name}</span>
-                  </label>
-                ))
-              )}
-            </div>
+            <label className="text-xs font-medium text-foreground">Story</label>
+            <MultiSelect
+              options={authors}
+              selectedIds={storyAuthorIds}
+              onChange={setStoryAuthorIds}
+              placeholder="Pilih author story..."
+              emptyMessage="Belum ada data author di database."
+            />
           </div>
           <div className="space-y-1">
-            <p className="text-xs font-medium text-foreground">Art</p>
-            <div className="flex flex-wrap gap-2 rounded border border-border bg-input px-2 py-2 text-xs">
-              {authors.length === 0 ? (
-                <span className="text-muted-foreground">
-                  Belum ada data author di database.
-                </span>
-              ) : (
-                authors.map((a) => (
-                  <label key={a.id} className="inline-flex items-center gap-1">
-                    <input
-                      type="checkbox"
-                      checked={artAuthorIds.includes(a.id)}
-                      onChange={() => toggleArtAuthor(a.id)}
-                      className="h-3 w-3 rounded border-border bg-input text-primary"
-                    />
-                    <span>{a.name}</span>
-                  </label>
-                ))
-              )}
-            </div>
+            <label className="text-xs font-medium text-foreground">Art</label>
+            <MultiSelect
+              options={authors}
+              selectedIds={artAuthorIds}
+              onChange={setArtAuthorIds}
+              placeholder="Pilih author art..."
+              emptyMessage="Belum ada data author di database."
+            />
           </div>
         </div>
       </div>
