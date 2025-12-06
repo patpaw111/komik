@@ -253,8 +253,36 @@ function extractPathFromUrl(url: string): string | null {
   }
 }
 
+// Helper function untuk extract path dari chapter image URL
+function extractChapterImagePath(url: string): string | null {
+  if (!url) return null;
+  
+  try {
+    const urlObj = new URL(url);
+    const pathParts = urlObj.pathname.split("/");
+    
+    // cari index "chapters" di pathname
+    const chaptersIndex = pathParts.indexOf("chapters");
+    if (chaptersIndex === -1 || chaptersIndex === pathParts.length - 1) {
+      return null;
+    }
+    
+    // ambil semua bagian setelah "chapters"
+    const pathAfterChapters = pathParts.slice(chaptersIndex + 1).join("/");
+    return pathAfterChapters || null;
+  } catch (err) {
+    // fallback: coba split manual
+    const urlParts = url.split("/chapters/");
+    if (urlParts.length > 1) {
+      const pathWithQuery = urlParts[1];
+      return pathWithQuery.split("?")[0].split("#")[0].trim() || null;
+    }
+    return null;
+  }
+}
+
 // DELETE /api/series/[id]
-// hapus komik berdasarkan id
+// hapus komik berdasarkan id (termasuk semua chapters dan gambar)
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -274,7 +302,70 @@ export async function DELETE(
       return fail("Series tidak ditemukan", 404, fetchError.message);
     }
 
-    // hapus cover dari bucket kalau ada
+    // 1. Ambil semua chapters dari series ini
+    const { data: chaptersData, error: chaptersError } = await supabaseAdmin
+      .from("chapters")
+      .select("id")
+      .eq("series_id", id);
+
+    if (chaptersError) {
+      console.error("[DELETE /api/series/[id]] error fetching chapters", chaptersError);
+      // Lanjutkan meskipun error, mungkin tidak ada chapters
+    }
+
+    // 2. Ambil semua gambar chapter untuk dihapus dari storage
+    const chapterIds = (chaptersData ?? []).map((c) => c.id);
+    let allImagePaths: string[] = [];
+
+    if (chapterIds.length > 0) {
+      const { data: imagesData, error: imagesError } = await supabaseAdmin
+        .from("chapter_images")
+        .select("image_url")
+        .in("chapter_id", chapterIds);
+
+      if (imagesError) {
+        console.error("[DELETE /api/series/[id]] error fetching chapter images", imagesError);
+      } else if (imagesData) {
+        // Extract paths dari semua gambar chapter
+        allImagePaths = imagesData
+          .map((img) => extractChapterImagePath(img.image_url))
+          .filter((path): path is string => path !== null && path.trim() !== "");
+      }
+    }
+
+    // 3. Hapus semua gambar chapter dari storage (jika ada)
+    if (allImagePaths.length > 0) {
+      try {
+        console.log(`[DELETE /api/series/[id]] deleting ${allImagePaths.length} chapter images from storage`);
+        
+        // Hapus dalam batch (Supabase storage remove bisa handle multiple paths)
+        const batchSize = 100; // Supabase biasanya limit per request
+        for (let i = 0; i < allImagePaths.length; i += batchSize) {
+          const batch = allImagePaths.slice(i, i + batchSize);
+          const { error: storageError } = await supabaseAdmin.storage
+            .from("chapters")
+            .remove(batch);
+          
+          if (storageError) {
+            console.warn("[DELETE /api/series/[id]] failed to delete some chapter images", {
+              error: storageError,
+              batchStart: i,
+              batchSize: batch.length,
+            });
+            // Lanjutkan meskipun ada error, tidak gagalkan proses
+          } else {
+            console.log(`[DELETE /api/series/[id]] deleted ${batch.length} chapter images successfully`);
+          }
+        }
+      } catch (storageErr: any) {
+        console.warn("[DELETE /api/series/[id]] error deleting chapter images from storage", {
+          error: storageErr,
+        });
+        // Lanjutkan meskipun error, tidak gagalkan proses delete series
+      }
+    }
+
+    // 4. Hapus cover dari bucket kalau ada
     if (seriesData?.cover_image_url) {
       const coverPath = extractPathFromUrl(seriesData.cover_image_url);
       
@@ -306,17 +397,19 @@ export async function DELETE(
       }
     }
 
-    // hapus series dari database
+    // 5. Hapus series dari database (akan cascade delete chapters dan chapter_images)
     const { error } = await supabaseAdmin.from("series").delete().eq("id", id);
 
     if (error) {
-      console.error("[DELETE /api/series/[id]] error", error);
+      console.error("[DELETE /api/series/[id]] error deleting series", error);
       return fail("Gagal menghapus series", 500, error.message);
     }
 
+    console.log(`[DELETE /api/series/[id]] series deleted successfully. Also deleted ${allImagePaths.length} chapter images from storage.`);
+
     return NextResponse.json({
       success: true,
-      message: "Series berhasil dihapus",
+      message: "Series berhasil dihapus beserta semua chapters dan gambar",
     });
   } catch (err: any) {
     console.error("[DELETE /api/series/[id]] unexpected error", err);
