@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       .select(
         `
         *,
-        series(id, title, slug)
+        series(id, title, slug, cover_image_url)
         `,
         { count: "exact" }
       )

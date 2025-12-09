@@ -98,6 +98,14 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* 4. LOGO HELPER CLASS */
 /* Tambahkan class ini ke tag <img> logomu nanti */
 .logo-adaptive {
