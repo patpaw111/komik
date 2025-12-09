@@ -63,6 +63,12 @@ export function ChapterCreateForm() {
     loadSeries();
   }, [seriesId, router]);
 
+  const normalizeName = (name: string) => name.toLowerCase();
+
+  const naturalCompare = (a: string, b: string) => {
+    return a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
+  };
+
   const handleAddImage = () => {
     const input = document.createElement("input");
     input.type = "file";
@@ -82,6 +88,38 @@ export function ChapterCreateForm() {
         };
         setImages([...images, newImage]);
       }
+    };
+    input.click();
+  };
+
+  const handleAddImagesBulk = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.multiple = true;
+    input.onchange = async (e) => {
+      const files = (e.target as HTMLInputElement).files;
+      if (!files || files.length === 0) return;
+
+      const sorted = Array.from(files).sort((a, b) =>
+        naturalCompare(normalizeName(a.name), normalizeName(b.name))
+      );
+
+      const startIndex = images.length;
+      const newItems: ImageItem[] = [];
+
+      sorted.forEach((file, idx) => {
+        const fileCopy = new File([file], file.name, { type: file.type });
+        const preview = URL.createObjectURL(fileCopy);
+        newItems.push({
+          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          file: fileCopy,
+          preview,
+          pageNumber: startIndex + idx + 1,
+        });
+      });
+
+      setImages((prev) => [...prev, ...newItems]);
     };
     input.click();
   };
@@ -320,14 +358,27 @@ export function ChapterCreateForm() {
           <label className="text-sm font-medium text-foreground">
             Gambar Chapter <span className="text-red-400">*</span>
           </label>
-          <button
-            type="button"
-            onClick={handleAddImage}
-            className="text-sm text-primary hover:text-primary/80"
-          >
-            + Tambah Gambar
-          </button>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={handleAddImagesBulk}
+              className="text-sm text-primary hover:text-primary/80"
+            >
+              + Upload Bulk
+            </button>
+            <button
+              type="button"
+              onClick={handleAddImage}
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              + Satu Gambar
+            </button>
+          </div>
         </div>
+
+        <p className="text-xs text-muted-foreground">
+          Tips: jika file sudah dinamai berurutan (1, 2, 3...) gunakan "Upload Bulk" supaya otomatis diurutkan sesuai nama file.
+        </p>
 
         {images.length === 0 ? (
           <div className="rounded border border-dashed border-border p-8 text-center">
