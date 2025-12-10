@@ -58,9 +58,11 @@ async function getLatestChapters(): Promise<HighlightChapter[]> {
     process.env.NEXT_PUBLIC_SITE_URL ||
     (typeof window === "undefined" ? "http://localhost:3000" : window.location.origin);
 
+  // Ambil lebih banyak chapter (100) untuk memastikan kita punya cukup data
+  // setelah filtering per series
   let apiUrl: string;
   try {
-    apiUrl = new URL("/api/chapters?limit=10&page=1", baseUrl).toString();
+    apiUrl = new URL("/api/chapters?limit=100&page=1", baseUrl).toString();
   } catch (err) {
     console.error("[home] invalid base URL", baseUrl, err);
     return [];
@@ -82,7 +84,38 @@ async function getLatestChapters(): Promise<HighlightChapter[]> {
   const json = (await res.json()) as ChapterApiResponse;
   const list = Array.isArray(json.data) ? json.data : [];
 
-  return list.map((item, idx) => ({
+  // Group by series_id dan ambil hanya chapter terbaru per series
+  const seriesMap = new Map<string, typeof list[0]>();
+  
+  for (const item of list) {
+    const seriesId = item.series?.id;
+    if (!seriesId) continue;
+
+    const existing = seriesMap.get(seriesId);
+    if (!existing) {
+      seriesMap.set(seriesId, item);
+      continue;
+    }
+
+    // Bandingkan waktu: ambil yang lebih terbaru
+    const itemTime = new Date(item.published_at ?? item.created_at ?? 0).getTime();
+    const existingTime = new Date(existing.published_at ?? existing.created_at ?? 0).getTime();
+    
+    if (itemTime > existingTime) {
+      seriesMap.set(seriesId, item);
+    }
+  }
+
+  // Convert map ke array dan sort berdasarkan waktu terbaru
+  const uniqueChapters = Array.from(seriesMap.values())
+    .sort((a, b) => {
+      const timeA = new Date(a.published_at ?? a.created_at ?? 0).getTime();
+      const timeB = new Date(b.published_at ?? b.created_at ?? 0).getTime();
+      return timeB - timeA; // Descending (terbaru dulu)
+    })
+    .slice(0, 10); // Ambil 10 teratas
+
+  return uniqueChapters.map((item, idx) => ({
     id: item.id,
     title: item.series?.title ?? "Tanpa judul",
     chapterLabel: `Chapter ${item.chapter_number}`,
