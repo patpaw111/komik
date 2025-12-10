@@ -146,7 +146,7 @@ export function SeriesTable({
         (a: any) => (a.role ?? "Story") === "Story"
       );
       const art = (authorsData ?? []).filter(
-        (a: any) => (a.role ?? "Story") === "Art"
+        (a: any) => a.role === "Art"
       );
 
       setStoryAuthorIds(story.map((a: any) => a.author_id));
@@ -364,10 +364,18 @@ export function SeriesTable({
       }
 
       // sinkronkan authors
-      const authorsPayload = [
-        ...storyAuthorIds.map((id) => ({ author_id: id, role: "Story" })),
-        ...artAuthorIds.map((id) => ({ author_id: id, role: "Art" })),
-      ];
+      // Sekarang kita bisa menambahkan author yang sama dengan role berbeda (Story dan Art)
+      const authorsPayload: Array<{ author_id: string; role: string }> = [];
+      
+      // Tambahkan semua author dari Story
+      storyAuthorIds.forEach((id) => {
+        authorsPayload.push({ author_id: id, role: "Story" });
+      });
+      
+      // Tambahkan semua author dari Art
+      artAuthorIds.forEach((id) => {
+        authorsPayload.push({ author_id: id, role: "Art" });
+      });
 
       try {
         const authorsRes = await fetch(`/api/series/${seriesId}/authors`, {
@@ -378,9 +386,11 @@ export function SeriesTable({
         if (!authorsRes.ok) {
           const authorsJson = await authorsRes.json();
           console.error("[SeriesTable] update authors error", authorsJson);
+          setActionError(authorsJson.message ?? "Gagal menyimpan author series");
         }
       } catch (err) {
         console.error("[SeriesTable] update authors error", err);
+        setActionError("Gagal menyimpan author series");
       }
 
       // kalau update database berhasil, baru hapus cover lama

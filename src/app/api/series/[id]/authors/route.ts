@@ -36,7 +36,18 @@ export async function PUT(
       return NextResponse.json({ success: true, data: [] });
     }
 
-    const rows = authors.map((a) => ({
+    // Filter duplikasi berdasarkan (series_id, author_id, role)
+    // Sekarang kita bisa memiliki author yang sama dengan role berbeda
+    const uniqueAuthors = new Map<string, AuthorPayload>();
+    for (const author of authors) {
+      // Key adalah kombinasi author_id dan role
+      const key = `${author.author_id}:${author.role ?? "Story"}`;
+      if (!uniqueAuthors.has(key)) {
+        uniqueAuthors.set(key, author);
+      }
+    }
+
+    const rows = Array.from(uniqueAuthors.values()).map((a) => ({
       series_id: id,
       author_id: a.author_id,
       role: a.role ?? "Story",
