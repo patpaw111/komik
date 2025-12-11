@@ -53,10 +53,14 @@ function formatRelative(dateString?: string | null) {
   return `${Math.floor(months / 12)} tahun lalu`;
 }
 
+function getBaseUrl() {
+  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return "http://localhost:3000";
+}
+
 async function getSeries(slug: string): Promise<SeriesData | null> {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    (typeof window === "undefined" ? "http://localhost:3000" : window.location.origin);
+  const baseUrl = getBaseUrl();
 
   try {
     const res = await fetch(`${baseUrl}/api/series/slug/${slug}`, {
@@ -80,9 +84,7 @@ async function getSeries(slug: string): Promise<SeriesData | null> {
 }
 
 async function getChapters(seriesId: string, page: number = 1) {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    (typeof window === "undefined" ? "http://localhost:3000" : window.location.origin);
+  const baseUrl = getBaseUrl();
 
   const limit = 30;
   try {
