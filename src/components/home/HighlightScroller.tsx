@@ -1,5 +1,8 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useRef } from "react";
 
 export type HighlightChapter = {
   id: string;
@@ -15,6 +18,54 @@ type Props = {
 };
 
 export default function HighlightScroller({ items }: Props) {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    let isDown = false;
+    let startX: number;
+    let scrollLeft: number;
+
+    const handleMouseDown = (e: MouseEvent) => {
+      isDown = true;
+      container.style.cursor = 'grabbing';
+      startX = e.pageX - container.offsetLeft;
+      scrollLeft = container.scrollLeft;
+    };
+
+    const handleMouseLeave = () => {
+      isDown = false;
+      container.style.cursor = 'grab';
+    };
+
+    const handleMouseUp = () => {
+      isDown = false;
+      container.style.cursor = 'grab';
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDown) return;
+      e.preventDefault();
+      const x = e.pageX - container.offsetLeft;
+      const walk = (x - startX) * 2;
+      container.scrollLeft = scrollLeft - walk;
+    };
+
+    container.addEventListener('mousedown', handleMouseDown);
+    container.addEventListener('mouseleave', handleMouseLeave);
+    container.addEventListener('mouseup', handleMouseUp);
+    container.addEventListener('mousemove', handleMouseMove);
+
+    return () => {
+      container.removeEventListener('mousedown', handleMouseDown);
+      container.removeEventListener('mouseleave', handleMouseLeave);
+      container.removeEventListener('mouseup', handleMouseUp);
+      container.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, []);
+
   return (
     <section
       className="mx-auto max-w-7xl px-4 pb-10 pt-8 md:px-6 md:pt-10"
@@ -36,11 +87,20 @@ export default function HighlightScroller({ items }: Props) {
         </Link>
       </div>
 
-      <div className="no-scrollbar flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
+      <div 
+        ref={scrollContainerRef}
+        className="no-scrollbar flex gap-4 overflow-x-auto overflow-y-hidden pb-2 snap-x snap-mandatory scroll-smooth"
+        style={{
+          scrollBehavior: 'smooth',
+          WebkitOverflowScrolling: 'touch',
+          touchAction: 'pan-x',
+          cursor: 'grab',
+        }}
+      >
         {items.map((item) => (
           <article
             key={item.id}
-            className="group relative min-w-[68%] max-w-[68%] snap-start overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm transition hover:-translate-y-1 hover:shadow-lg sm:min-w-[42%] sm:max-w-[42%] lg:min-w-[22%] lg:max-w-[22%]"
+            className="group relative min-w-[68%] max-w-[68%] shrink-0 snap-start overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm transition hover:-translate-y-1 hover:shadow-lg sm:min-w-[42%] sm:max-w-[42%] lg:min-w-[22%] lg:max-w-[22%]"
           >
             <div className="relative aspect-3/4 overflow-hidden">
               <Image
