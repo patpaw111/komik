@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import Footer from "@/components/home/Footer";
 import Navbar from "@/components/home/Navbar";
+import { ChapterSearch } from "@/components/komik/ChapterSearch";
 
 type SeriesData = {
   id: string;
@@ -148,10 +149,10 @@ export default async function SeriesDetailPage({ params, searchParams }: PagePro
           </Link>
           <Link
             href="/"
-            className="text-lg hover:text-primary transition"
+            className="text-sm font-medium text-muted-foreground hover:text-foreground transition"
             aria-label="Home"
           >
-            🏠
+            ⌂
           </Link>
         </div>
 
@@ -287,55 +288,13 @@ export default async function SeriesDetailPage({ params, searchParams }: PagePro
               </h2>
             </div>
 
-            {/* Search Bar */}
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Cari Chapter, Contoh: 69 atau 76"
-                className="w-full rounded-lg border border-border bg-input px-4 py-2 text-sm outline-none placeholder:text-muted-foreground focus:border-primary"
-              />
-            </div>
-
-            {/* Chapters Grid */}
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {chapters.map((chapter, idx) => {
-                const isRecent = idx < 3;
-                const chapterTime = chapter.published_at || chapter.created_at;
-                return (
-                  <Link
-                    key={chapter.id}
-                    href={`/komik/${series.slug}/chapter/${chapter.slug || chapter.id}`}
-                    className="group flex gap-3 rounded-lg border border-border bg-card p-3 hover:bg-muted transition"
-                  >
-                    <div className="relative h-20 w-16 shrink-0 overflow-hidden rounded border border-border">
-                      <Image
-                        src={series.cover_image_url || placeholderCover}
-                        alt={`${series.title} Chapter ${chapter.chapter_number}`}
-                        fill
-                        sizes="64px"
-                        className="object-cover"
-                      />
-                      {isRecent && (
-                        <div className="absolute top-1 right-1 rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                          UP
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <h3 className="text-sm font-semibold line-clamp-2">
-                          Chapter {chapter.chapter_number}
-                          {chapter.title && ` ${chapter.title}`}
-                        </h3>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {formatRelative(chapterTime)}
-                      </p>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
+            <ChapterSearch
+              chapters={chapters}
+              seriesSlug={series.slug}
+              seriesTitle={series.title}
+              seriesCover={series.cover_image_url}
+              placeholderCover={placeholderCover}
+            />
 
             {/* Pagination */}
             {totalPages > 1 && (
