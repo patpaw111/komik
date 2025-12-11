@@ -1,52 +1,86 @@
 import { notFound } from "next/navigation";
 import { ChapterReader } from "@/components/komik/ChapterReader";
+import { supabaseRead } from "@/lib/supabase/read";
 
 type PageProps = {
   params: Promise<{ slug: string; chapterSlug: string }>;
 };
 
-function getBaseUrl() {
-  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return "http://localhost:3000";
-}
-
 async function getChapterData(slug: string, chapterSlug: string) {
-  const baseUrl = getBaseUrl();
-
   try {
     // Get series by slug
-    const seriesRes = await fetch(`${baseUrl}/api/series/slug/${slug}`, {
-      cache: "no-store",
-    });
+    const { data: seriesData, error: seriesError } = await supabaseRead
+      .from("series")
+      .select(
+        `
+        id,
+        title,
+        slug,
+        cover_image_url,
+        series_authors(authors(id, name), role),
+        series_genres(genres(id, name))
+        `
+      )
+      .eq("slug", slug)
+      .single();
 
-    if (!seriesRes.ok) {
+    if (seriesError || !seriesData) {
       return null;
     }
 
-    const seriesJson = await seriesRes.json();
-    if (!seriesJson.success) {
-      return null;
-    }
+    const series_authors = Array.isArray(seriesData.series_authors)
+      ? (seriesData.series_authors
+          .map((a: any) => {
+            const av = Array.isArray(a.authors) ? a.authors[0] ?? null : a.authors ?? null;
+            return av
+              ? {
+                  authors: { id: String(av.id ?? ""), name: String(av.name ?? "") },
+                  role: String(a.role ?? ""),
+                }
+              : null;
+          })
+          .filter(Boolean) as Array<{ authors: { id: string; name: string }; role: string }>)
+      : [];
 
-    const series = seriesJson.data;
+    const series_genres = Array.isArray(seriesData.series_genres)
+      ? (seriesData.series_genres
+          .map((g: any) => {
+            const gv = Array.isArray(g.genres) ? g.genres[0] ?? null : g.genres ?? null;
+            return gv ? { genres: { id: String(gv.id ?? ""), name: String(gv.name ?? "") } } : null;
+          })
+          .filter(Boolean) as Array<{ genres: { id: string; name: string } }>)
+      : [];
+
+    const series = {
+      id: String(seriesData.id ?? ""),
+      title: String(seriesData.title ?? ""),
+      slug: String(seriesData.slug ?? ""),
+      cover_image_url: seriesData.cover_image_url ?? null,
+      series_authors,
+      series_genres,
+    };
 
     // Get all chapters for this series
-    const chaptersRes = await fetch(
-      `${baseUrl}/api/chapters?series_id=${series.id}&limit=1000`,
-      { cache: "no-store" }
-    );
+    const { data: chaptersData, error: chaptersError } = await supabaseRead
+      .from("chapters")
+      .select("id, chapter_number, title, slug, index")
+      .eq("series_id", series.id)
+      .order("index", { ascending: false })
+      .limit(1000);
 
-    if (!chaptersRes.ok) {
+    if (chaptersError) {
+      console.error("[chapter reader] supabase chapters error", chaptersError);
       return null;
     }
 
-    const chaptersJson = await chaptersRes.json();
-    if (!chaptersJson.success) {
-      return null;
-    }
-
-    const chapters = chaptersJson.data || [];
+    const chapters = (Array.isArray(chaptersData) ? chaptersData : []).map((ch: any) => ({
+      id: String(ch.id ?? ""),
+      chapter_number: String(ch.chapter_number ?? ""),
+      title: ch.title ?? null,
+      slug: String(ch.slug ?? ""),
+      index: Number(ch.index ?? 0),
+      series_id: series.id,
+    }));
     
     // Find current chapter by slug or id
     const currentChapter = chapters.find(
@@ -58,17 +92,21 @@ async function getChapterData(slug: string, chapterSlug: string) {
     }
 
     // Get chapter images
-    const imagesRes = await fetch(
-      `${baseUrl}/api/chapters/${currentChapter.id}/images`,
-      { cache: "no-store" }
-    );
+    const { data: imagesData, error: imagesError } = await supabaseRead
+      .from("chapter_images")
+      .select("*")
+      .eq("chapter_id", currentChapter.id)
+      .order("page_number", { ascending: true });
 
-    if (!imagesRes.ok) {
+    if (imagesError) {
+      console.error("[chapter reader] supabase images error", imagesError);
       return null;
     }
 
-    const imagesJson = await imagesRes.json();
-    const images = imagesJson.success ? imagesJson.data || [] : [];
+    const images = (imagesData ?? []).map((img: any) => ({
+      ...img,
+      page_number: Number(img.page_number ?? 0),
+    }));
 
     // Sort chapters by index
     const sortedChapters = chapters.sort((a: any, b: any) => b.index - a.index);
@@ -85,7 +123,7 @@ async function getChapterData(slug: string, chapterSlug: string) {
     return {
       series,
       chapter: currentChapter,
-      images: images.sort((a: any, b: any) => a.page_number - b.page_number),
+      images,
       chapters: sortedChapters,
       prevChapter,
       nextChapter,

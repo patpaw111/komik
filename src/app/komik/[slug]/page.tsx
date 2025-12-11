@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import Footer from "@/components/home/Footer";
 import Navbar from "@/components/home/Navbar";
 import { ChapterSearch } from "@/components/komik/ChapterSearch";
+import { supabaseRead } from "@/lib/supabase/read";
 
 type SeriesData = {
   id: string;
@@ -60,57 +61,119 @@ function getBaseUrl() {
 }
 
 async function getSeries(slug: string): Promise<SeriesData | null> {
-  const baseUrl = getBaseUrl();
+  const { data, error } = await supabaseRead
+    .from("series")
+    .select(
+      `
+      id,
+      title,
+      alternative_title,
+      slug,
+      description,
+      status,
+      cover_image_url,
+      view_count,
+      rating,
+      formats(id, name),
+      series_genres(genres(id, name)),
+      series_authors(authors(id, name), role)
+      `
+    )
+    .eq("slug", slug)
+    .single();
 
-  try {
-    const res = await fetch(`${baseUrl}/api/series/slug/${slug}`, {
-      cache: "no-store",
-    });
-
-    if (!res.ok) {
-      return null;
-    }
-
-    const json = await res.json();
-    if (!json.success) {
-      return null;
-    }
-
-    return json.data as SeriesData;
-  } catch (err) {
-    console.error("[series detail] error fetching series", err);
+  if (error) {
+    console.error("[series detail] supabase series error", error);
     return null;
   }
+
+  const series_genres = Array.isArray(data?.series_genres)
+    ? data.series_genres
+        .map((g: any) => {
+          const gv = Array.isArray(g.genres) ? g.genres[0] ?? null : g.genres ?? null;
+          return gv ? { genres: { id: String(gv.id ?? ""), name: String(gv.name ?? "") } } : null;
+        })
+        .filter(Boolean)
+    : [];
+
+  const series_authors = Array.isArray(data?.series_authors)
+    ? data.series_authors
+        .map((a: any) => {
+          const av = Array.isArray(a.authors) ? a.authors[0] ?? null : a.authors ?? null;
+          return av
+            ? {
+                authors: { id: String(av.id ?? ""), name: String(av.name ?? "") },
+                role: String(a.role ?? ""),
+              }
+            : null;
+        })
+        .filter(Boolean)
+    : [];
+
+  const formatsValue = Array.isArray((data as any)?.formats)
+    ? (data as any).formats[0] ?? null
+    : (data as any)?.formats ?? null;
+
+  return {
+    id: String(data?.id ?? ""),
+    title: String(data?.title ?? ""),
+    alternative_title: data?.alternative_title ?? null,
+    slug: String(data?.slug ?? ""),
+    description: data?.description ?? null,
+    status: String(data?.status ?? ""),
+    cover_image_url: data?.cover_image_url ?? null,
+    view_count: Number(data?.view_count ?? 0),
+    rating: Number(data?.rating ?? 0),
+    formats: formatsValue
+      ? { id: String(formatsValue.id ?? ""), name: String(formatsValue.name ?? "") }
+      : null,
+    series_genres: series_genres as Array<{ genres: { id: string; name: string } }>,
+    series_authors: series_authors as Array<{ authors: { id: string; name: string }; role: string }>,
+  };
 }
 
 async function getChapters(seriesId: string, page: number = 1) {
-  const baseUrl = getBaseUrl();
-
   const limit = 30;
-  try {
-    const res = await fetch(
-      `${baseUrl}/api/chapters?series_id=${seriesId}&page=${page}&limit=${limit}`,
-      { cache: "no-store" }
-    );
+  const offset = (page - 1) * limit;
 
-    if (!res.ok) {
-      return { data: [], total: 0, totalPages: 0 };
-    }
+  const { data, error, count } = await supabaseRead
+    .from("chapters")
+    .select(
+      `
+      id,
+      chapter_number,
+      title,
+      slug,
+      published_at,
+      created_at,
+      view_count,
+      index
+      `,
+      { count: "exact" }
+    )
+    .eq("series_id", seriesId)
+    .order("index", { ascending: false })
+    .range(offset, offset + limit - 1);
 
-    const json = await res.json();
-    if (!json.success) {
-      return { data: [], total: 0, totalPages: 0 };
-    }
-
-    const chapters = (json.data ?? []) as ChapterData[];
-    const total = json.meta?.total ?? 0;
-    const totalPages = Math.ceil(total / limit);
-
-    return { data: chapters, total, totalPages };
-  } catch (err) {
-    console.error("[series detail] error fetching chapters", err);
+  if (error) {
+    console.error("[series detail] supabase chapters error", error);
     return { data: [], total: 0, totalPages: 0 };
   }
+
+  const chapters = (Array.isArray(data) ? data : []).map((ch: any) => ({
+    id: String(ch.id ?? ""),
+    chapter_number: String(ch.chapter_number ?? ""),
+    title: ch.title ?? null,
+    slug: String(ch.slug ?? ""),
+    published_at: ch.published_at ?? null,
+    created_at: String(ch.created_at ?? ""),
+    view_count: Number(ch.view_count ?? 0),
+  })) as ChapterData[];
+
+  const total = count ?? 0;
+  const totalPages = Math.ceil(total / limit);
+
+  return { data: chapters, total, totalPages };
 }
 
 export default async function SeriesDetailPage({ params, searchParams }: PageProps) {
