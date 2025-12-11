@@ -124,6 +124,7 @@ async function getLatestChapters(): Promise<HighlightChapter[]> {
     cover: item.series?.cover_image_url || placeholders[idx % placeholders.length],
     tagline: item.title ?? item.series?.slug ?? "",
     updatedAtText: formatRelative(item.published_at ?? item.created_at ?? null),
+    slug: item.series?.slug,
   }));
 }
 
