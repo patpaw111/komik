@@ -50,7 +50,30 @@ export default async function ChaptersDashboardPage({ searchParams }: PageProps)
     console.error("[dashboard-admin/chapters] error", error);
   }
 
-  const chaptersList = (data ?? []) as {
+  const chaptersList = (data ?? []).map((item: any) => {
+    const seriesValue = Array.isArray(item.series)
+      ? item.series[0] ?? null
+      : item.series ?? null;
+
+    return {
+      id: String(item.id),
+      title: item.title ?? null,
+      chapter_number: String(item.chapter_number),
+      slug: String(item.slug),
+      index: Number(item.index ?? 0),
+      view_count: Number(item.view_count ?? 0),
+      created_at: String(item.created_at ?? ""),
+      published_at: String(item.published_at ?? ""),
+      series_id: String(item.series_id ?? ""),
+      series: seriesValue
+        ? {
+            id: String(seriesValue.id ?? ""),
+            title: String(seriesValue.title ?? ""),
+            slug: String(seriesValue.slug ?? ""),
+          }
+        : null,
+    };
+  }) as {
     id: string;
     title: string | null;
     chapter_number: string;
