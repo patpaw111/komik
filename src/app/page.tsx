@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import BottomNavbar from "@/components/home/BottomNavbar";
 import Footer from "@/components/home/Footer";
 import HighlightScroller, {
