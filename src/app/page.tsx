@@ -5,7 +5,7 @@ import HighlightScroller, {
 } from "@/components/home/HighlightScroller";
 import Navbar from "@/components/home/Navbar";
 import UpdatedGrid from "@/components/home/UpdatedGrid";
-import { updatedComics } from "@/data/home";
+import type { ComicUpdate } from "@/data/home";
 
 type ChapterApiResponse = {
   success: boolean;
@@ -15,6 +15,7 @@ type ChapterApiResponse = {
     title: string | null;
     published_at?: string;
     created_at?: string;
+    index: number;
     series?: {
       id: string;
       title: string;
@@ -126,8 +127,108 @@ async function getLatestChapters(): Promise<HighlightChapter[]> {
   }));
 }
 
+async function getUpdatedComics(): Promise<ComicUpdate[]> {
+  const baseUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (typeof window === "undefined" ? "http://localhost:3000" : window.location.origin);
+
+  // Ambil banyak chapter untuk mendapatkan latest dan previous chapter per series
+  let apiUrl: string;
+  try {
+    apiUrl = new URL("/api/chapters?limit=200&page=1", baseUrl).toString();
+  } catch (err) {
+    console.error("[home] invalid base URL", baseUrl, err);
+    return [];
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(apiUrl, { cache: "no-store" });
+  } catch (err) {
+    console.error("[home] gagal fetch chapters untuk updated comics", err);
+    return [];
+  }
+
+  if (!res.ok) {
+    console.error("[home] gagal ambil chapters untuk updated comics", res.statusText);
+    return [];
+  }
+
+  const json = (await res.json()) as ChapterApiResponse;
+  const list = Array.isArray(json.data) ? json.data : [];
+
+  // Group by series_id dan ambil 2 chapter terbaru per series (latest dan previous)
+  const seriesMap = new Map<
+    string,
+    {
+      latest: typeof list[0];
+      previous?: typeof list[0];
+    }
+  >();
+
+  for (const item of list) {
+    const seriesId = item.series?.id;
+    if (!seriesId) continue;
+
+    const existing = seriesMap.get(seriesId);
+    if (!existing) {
+      seriesMap.set(seriesId, { latest: item });
+      continue;
+    }
+
+    // Bandingkan index: ambil yang lebih tinggi sebagai latest
+    const itemIndex = item.index ?? 0;
+    const existingIndex = existing.latest.index ?? 0;
+
+    if (itemIndex > existingIndex) {
+      // Item baru lebih tinggi, jadi ini menjadi latest, dan yang lama jadi previous
+      seriesMap.set(seriesId, {
+        latest: item,
+        previous: existing.latest,
+      });
+    } else if (!existing.previous || itemIndex > (existing.previous.index ?? 0)) {
+      // Item ini bisa jadi previous jika lebih tinggi dari previous yang ada
+      seriesMap.set(seriesId, {
+        latest: existing.latest,
+        previous: item,
+      });
+    }
+  }
+
+  // Convert map ke array, sort berdasarkan waktu latest chapter terbaru, dan ambil 12 teratas
+  const updatedComics = Array.from(seriesMap.entries())
+    .map(([seriesId, { latest, previous }]) => {
+      const latestTime = new Date(latest.published_at ?? latest.created_at ?? 0).getTime();
+      return {
+        seriesId,
+        latest,
+        previous,
+        latestTime,
+      };
+    })
+    .sort((a, b) => b.latestTime - a.latestTime) // Descending (terbaru dulu)
+    .slice(0, 12); // Ambil 12 teratas
+
+  return updatedComics.map(({ latest, previous }, idx) => {
+    const series = latest.series;
+    return {
+      id: series?.id ?? latest.id,
+      title: series?.title ?? "Tanpa judul",
+      cover: series?.cover_image_url || placeholders[idx % placeholders.length],
+      slug: series?.slug ?? "",
+      latestChapter: `Chapter ${latest.chapter_number}`,
+      releaseAgo: formatRelative(latest.published_at ?? latest.created_at ?? null),
+      previousChapter: previous ? `Chapter ${previous.chapter_number}` : undefined,
+      previousAgo: previous
+        ? formatRelative(previous.published_at ?? previous.created_at ?? null)
+        : undefined,
+    };
+  });
+}
+
 export default async function Home() {
   const highlights = await getLatestChapters();
+  const updatedComics = await getUpdatedComics();
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">

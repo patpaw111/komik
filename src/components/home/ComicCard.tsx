@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import type { ComicUpdate } from "@/data/home";
 
 type Props = {
@@ -6,8 +7,11 @@ type Props = {
 };
 
 export default function ComicCard({ item }: Props) {
+  const href = item.slug ? `/komik/${item.slug}` : `/komik/${item.id}`;
+  
   return (
-    <article className="group flex flex-col overflow-hidden rounded-xl border border-border/70 bg-card shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
+    <Link href={href}>
+      <article className="group flex flex-col overflow-hidden rounded-xl border border-border/70 bg-card shadow-sm transition hover:-translate-y-1 hover:shadow-lg cursor-pointer">
       <div className="relative aspect-3/4 overflow-hidden">
         <Image
           src={item.cover}
@@ -44,7 +48,8 @@ export default function ComicCard({ item }: Props) {
           ) : null}
         </div>
       </div>
-    </article>
+      </article>
+    </Link>
   );
 }
 

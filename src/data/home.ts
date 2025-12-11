@@ -12,6 +12,7 @@ export type ComicUpdate = {
   id: string;
   title: string;
   cover: string;
+  slug?: string;
   latestChapter: string;
   releaseAgo: string;
   previousChapter?: string;
