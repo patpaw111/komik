@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { supabaseRead } from "@/lib/supabase/read";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 function ok<T>(data: T) {
@@ -21,7 +22,7 @@ export async function GET(
   try {
     const { id } = await params;
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabaseRead
       .from("chapters")
       .select(`
         *,

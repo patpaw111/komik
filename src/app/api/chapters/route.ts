@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { supabaseRead } from "@/lib/supabase/read";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 function ok<T>(data: T, meta?: unknown) {
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
 
     const offset = (page - 1) * limit;
 
-    let query = supabaseAdmin
+    let query = supabaseRead
       .from("chapters")
       .select(
         `

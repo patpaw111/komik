@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { supabaseRead } from "@/lib/supabase/read";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 // helper kecil biar response API konsisten
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
 
     const offset = (page - 1) * limit; // hitung offset biar bisa paginasi
 
-    const { data, error, count } = await supabaseAdmin
+    const { data, error, count } = await supabaseRead
       .from("series")
       .select(
         `
