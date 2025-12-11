@@ -30,6 +30,12 @@ type ChapterApiResponse = {
   };
 };
 
+function getBaseUrl() {
+  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return "http://localhost:3000";
+}
+
 function formatRelative(dateString?: string | null) {
   if (!dateString) return "baru";
   const date = new Date(dateString);
@@ -56,9 +62,7 @@ const placeholders = [
 ];
 
 async function getLatestChapters(): Promise<HighlightChapter[]> {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    (typeof window === "undefined" ? "http://localhost:3000" : window.location.origin);
+  const baseUrl = getBaseUrl();
 
   // Ambil lebih banyak chapter (100) untuk memastikan kita punya cukup data
   // setelah filtering per series
@@ -129,9 +133,7 @@ async function getLatestChapters(): Promise<HighlightChapter[]> {
 }
 
 async function getUpdatedComics(): Promise<ComicUpdate[]> {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    (typeof window === "undefined" ? "http://localhost:3000" : window.location.origin);
+  const baseUrl = getBaseUrl();
 
   // Ambil banyak chapter untuk mendapatkan latest dan previous chapter per series
   let apiUrl: string;

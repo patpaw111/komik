@@ -5,10 +5,14 @@ type PageProps = {
   params: Promise<{ slug: string; chapterSlug: string }>;
 };
 
+function getBaseUrl() {
+  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return "http://localhost:3000";
+}
+
 async function getChapterData(slug: string, chapterSlug: string) {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    (typeof window === "undefined" ? "http://localhost:3000" : window.location.origin);
+  const baseUrl = getBaseUrl();
 
   try {
     // Get series by slug
