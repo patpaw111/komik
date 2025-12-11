@@ -41,9 +41,9 @@ export const metadata: Metadata = {
   title: "SSSS Komik",
   description: "SSSS Komik - Platform komik digital",
   icons: {
-    icon: "/logo.png",
-    shortcut: "/logo.png",
-    apple: "/logo.png",
+    icon: "/logo/logo.png",
+    shortcut: "/logo/logo.png",
+    apple: "/logo/logo.png",
   },
 };
 
