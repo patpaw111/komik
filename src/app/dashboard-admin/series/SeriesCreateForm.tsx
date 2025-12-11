@@ -25,6 +25,18 @@ const DEFAULT_STATE: FormState = {
   status: "Ongoing",
 };
 
+// Fungsi untuk generate slug dari judul
+function generateSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "-") // Ganti spasi dengan dash
+    .replace(/[^\w\-]+/g, "") // Hapus karakter non-word kecuali dash
+    .replace(/\-\-+/g, "-") // Ganti multiple dash dengan single dash
+    .replace(/^-+/, "") // Hapus dash di awal
+    .replace(/-+$/, ""); // Hapus dash di akhir
+}
+
 export function SeriesCreateForm() {
   const [form, setForm] = useState<FormState>(DEFAULT_STATE);
   const [coverFile, setCoverFile] = useState<File | null>(null);
@@ -37,6 +49,7 @@ export function SeriesCreateForm() {
   const [artAuthorIds, setArtAuthorIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -94,7 +107,18 @@ export function SeriesCreateForm() {
     >
   ) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    
+    // Jika yang diubah adalah title, auto-generate slug (kecuali slug sudah di-edit manual)
+    if (name === "title" && !isSlugManuallyEdited) {
+      const autoSlug = generateSlug(value);
+      setForm((prev) => ({ ...prev, title: value, slug: autoSlug }));
+    } else if (name === "slug") {
+      // Jika slug di-edit manual, tandai bahwa slug sudah di-edit
+      setIsSlugManuallyEdited(true);
+      setForm((prev) => ({ ...prev, [name]: value }));
+    } else {
+      setForm((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -195,6 +219,7 @@ export function SeriesCreateForm() {
       setSelectedGenreIds([]);
       setStoryAuthorIds([]);
       setArtAuthorIds([]);
+      setIsSlugManuallyEdited(false);
       router.refresh();
     } catch (err) {
       console.error("[SeriesCreateForm] submit error", err);
@@ -234,7 +259,7 @@ export function SeriesCreateForm() {
 
       <div className="space-y-1">
         <label className="text-sm font-medium text-foreground" htmlFor="slug">
-          Slug
+          Slug {!isSlugManuallyEdited && <span className="text-xs text-muted-foreground">(otomatis dari judul)</span>}
         </label>
         <input
           id="slug"
@@ -245,6 +270,9 @@ export function SeriesCreateForm() {
           className="w-full rounded border border-border bg-input px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
           placeholder="contoh: solo-leveling"
         />
+        <p className="text-xs text-muted-foreground">
+          Slug akan dibuat otomatis dari judul. Anda bisa mengubahnya manual jika diperlukan.
+        </p>
       </div>
 
       <div className="space-y-1">
