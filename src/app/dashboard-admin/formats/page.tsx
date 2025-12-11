@@ -14,7 +14,11 @@ export default async function FormatsDashboardPage() {
     console.error("[dashboard-admin/formats] error", error);
   }
 
-  const formatsList = (data ?? []) as {
+  const formatsList = (data ?? []).map((item: any) => ({
+    id: String(item.id ?? ""),
+    name: String(item.name ?? ""),
+    slug: String(item.slug ?? ""),
+  })) as {
     id: string;
     name: string;
     slug: string;

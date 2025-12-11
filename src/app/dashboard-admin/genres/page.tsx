@@ -14,7 +14,11 @@ export default async function GenresDashboardPage() {
     console.error("[dashboard-admin/genres] error", error);
   }
 
-  const genresList = (data ?? []) as {
+  const genresList = (data ?? []).map((item: any) => ({
+    id: String(item.id ?? ""),
+    name: String(item.name ?? ""),
+    slug: String(item.slug ?? ""),
+  })) as {
     id: string;
     name: string;
     slug: string;

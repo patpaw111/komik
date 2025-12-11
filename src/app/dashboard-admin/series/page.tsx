@@ -46,7 +46,48 @@ export default async function SeriesDashboardPage({ searchParams }: PageProps) {
     console.error("[dashboard-admin/series] error", error);
   }
 
-  const seriesList = (data ?? []) as {
+  const seriesList = (data ?? []).map((item: any) => {
+    const formatValue = Array.isArray(item.formats)
+      ? item.formats[0] ?? null
+      : item.formats ?? null;
+
+    const genresValue = Array.isArray(item.series_genres)
+      ? item.series_genres.map((g: any) => {
+          const gv = Array.isArray(g.genres) ? g.genres[0] ?? null : g.genres ?? null;
+          return gv
+            ? { genres: { id: String(gv.id ?? ""), name: String(gv.name ?? "") } }
+            : null;
+        }).filter(Boolean)
+      : [];
+
+    const authorsValue = Array.isArray(item.series_authors)
+      ? item.series_authors.map((a: any) => {
+          const av = Array.isArray(a.authors) ? a.authors[0] ?? null : a.authors ?? null;
+          return av
+            ? {
+                authors: { id: String(av.id ?? ""), name: String(av.name ?? "") },
+                role: String(a.role ?? ""),
+              }
+            : null;
+        }).filter(Boolean)
+      : [];
+
+    return {
+      id: String(item.id),
+      title: String(item.title ?? ""),
+      slug: String(item.slug ?? ""),
+      alternative_title: item.alternative_title ?? null,
+      description: item.description ?? null,
+      status: String(item.status ?? ""),
+      cover_image_url: item.cover_image_url ?? null,
+      format_id: item.format_id ? String(item.format_id) : null,
+      formats: formatValue
+        ? { id: String(formatValue.id ?? ""), name: String(formatValue.name ?? "") }
+        : null,
+      series_genres: genresValue as Array<{ genres: { id: string; name: string } }>,
+      series_authors: authorsValue as Array<{ authors: { id: string; name: string }; role: string }>,
+    };
+  }) as {
     id: string;
     title: string;
     slug: string;

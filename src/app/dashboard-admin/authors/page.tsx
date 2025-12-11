@@ -14,7 +14,10 @@ export default async function AuthorsDashboardPage() {
     console.error("[dashboard-admin/authors] error", error);
   }
 
-  const authorsList = (data ?? []) as {
+  const authorsList = (data ?? []).map((item: any) => ({
+    id: String(item.id ?? ""),
+    name: String(item.name ?? ""),
+  })) as {
     id: string;
     name: string;
   }[];
