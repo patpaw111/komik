@@ -8,6 +8,7 @@ import HighlightScroller, {
 import Navbar from "@/components/home/Navbar";
 import UpdatedGrid from "@/components/home/UpdatedGrid";
 import type { ComicUpdate } from "@/data/home";
+import { supabaseRead } from "@/lib/supabase/read";
 
 type ChapterApiResponse = {
   success: boolean;
@@ -31,12 +32,6 @@ type ChapterApiResponse = {
     total: number;
   };
 };
-
-function getBaseUrl() {
-  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return "http://localhost:3000";
-}
 
 function formatRelative(dateString?: string | null) {
   if (!dateString) return "baru";
@@ -64,33 +59,56 @@ const placeholders = [
 ];
 
 async function getLatestChapters(): Promise<HighlightChapter[]> {
-  const baseUrl = getBaseUrl();
+  // Ambil cukup banyak chapter untuk di-group per series
+  const { data, error } = await supabaseRead
+    .from("chapters")
+    .select(
+      `
+      id,
+      chapter_number,
+      title,
+      published_at,
+      created_at,
+      index,
+      series (
+        id,
+        title,
+        slug,
+        cover_image_url
+      )
+      `
+    )
+    .order("published_at", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
+    .limit(200);
 
-  // Ambil lebih banyak chapter (100) untuk memastikan kita punya cukup data
-  // setelah filtering per series
-  let apiUrl: string;
-  try {
-    apiUrl = new URL("/api/chapters?limit=100&page=1", baseUrl).toString();
-  } catch (err) {
-    console.error("[home] invalid base URL", baseUrl, err);
+  if (error) {
+    console.error("[home] supabase chapters error (latest)", error);
     return [];
   }
 
-  let res: Response;
-  try {
-    res = await fetch(apiUrl, { cache: "no-store" });
-  } catch (err) {
-    console.error("[home] gagal fetch chapters terbaru", err);
-    return [];
-  }
+  const list = (Array.isArray(data) ? data : []).map((item: any) => {
+    const seriesValue = Array.isArray(item.series)
+      ? item.series[0] ?? null
+      : item.series ?? null;
 
-  if (!res.ok) {
-    console.error("[home] gagal ambil chapters terbaru", res.statusText);
-    return [];
-  }
-
-  const json = (await res.json()) as ChapterApiResponse;
-  const list = Array.isArray(json.data) ? json.data : [];
+    return {
+      id: String(item.id ?? ""),
+      chapter_number: String(item.chapter_number ?? ""),
+      title: item.title ?? null,
+      published_at: item.published_at ?? null,
+      created_at: item.created_at ?? null,
+      index: Number(item.index ?? 0),
+      series: seriesValue
+        ? {
+            id: String(seriesValue.id ?? ""),
+            title: String(seriesValue.title ?? ""),
+            slug: String(seriesValue.slug ?? ""),
+            cover_image_url: seriesValue.cover_image_url ?? null,
+          }
+        : null,
+    };
+  });
 
   // Group by series_id dan ambil hanya chapter terbaru per series
   const seriesMap = new Map<string, typeof list[0]>();
@@ -135,32 +153,55 @@ async function getLatestChapters(): Promise<HighlightChapter[]> {
 }
 
 async function getUpdatedComics(): Promise<ComicUpdate[]> {
-  const baseUrl = getBaseUrl();
+  const { data, error } = await supabaseRead
+    .from("chapters")
+    .select(
+      `
+      id,
+      chapter_number,
+      title,
+      published_at,
+      created_at,
+      index,
+      series (
+        id,
+        title,
+        slug,
+        cover_image_url
+      )
+      `
+    )
+    .order("published_at", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
+    .limit(400);
 
-  // Ambil banyak chapter untuk mendapatkan latest dan previous chapter per series
-  let apiUrl: string;
-  try {
-    apiUrl = new URL("/api/chapters?limit=200&page=1", baseUrl).toString();
-  } catch (err) {
-    console.error("[home] invalid base URL", baseUrl, err);
+  if (error) {
+    console.error("[home] supabase chapters error (updated)", error);
     return [];
   }
 
-  let res: Response;
-  try {
-    res = await fetch(apiUrl, { cache: "no-store" });
-  } catch (err) {
-    console.error("[home] gagal fetch chapters untuk updated comics", err);
-    return [];
-  }
+  const list = (Array.isArray(data) ? data : []).map((item: any) => {
+    const seriesValue = Array.isArray(item.series)
+      ? item.series[0] ?? null
+      : item.series ?? null;
 
-  if (!res.ok) {
-    console.error("[home] gagal ambil chapters untuk updated comics", res.statusText);
-    return [];
-  }
-
-  const json = (await res.json()) as ChapterApiResponse;
-  const list = Array.isArray(json.data) ? json.data : [];
+    return {
+      id: String(item.id ?? ""),
+      chapter_number: String(item.chapter_number ?? ""),
+      title: item.title ?? null,
+      published_at: item.published_at ?? null,
+      created_at: item.created_at ?? null,
+      index: Number(item.index ?? 0),
+      series: seriesValue
+        ? {
+            id: String(seriesValue.id ?? ""),
+            title: String(seriesValue.title ?? ""),
+            slug: String(seriesValue.slug ?? ""),
+            cover_image_url: seriesValue.cover_image_url ?? null,
+          }
+        : null,
+    };
+  });
 
   // Group by series_id dan ambil 2 chapter terbaru per series (latest dan previous)
   const seriesMap = new Map<
