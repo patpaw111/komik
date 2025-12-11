@@ -25,7 +25,7 @@ export default function UpdatedGrid({ items }: Props) {
           </p>
         </div>
         <Link
-          href="/update"
+          href="/daftar-komik"
           className="text-sm font-semibold text-primary hover:underline"
         >
           Lihat semua

@@ -40,6 +40,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "SSSS Komik",
   description: "SSSS Komik - Platform komik digital",
+  icons: {
+    icon: "/logo.png",
+    shortcut: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({

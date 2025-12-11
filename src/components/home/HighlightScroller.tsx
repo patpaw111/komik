@@ -186,7 +186,7 @@ export default function HighlightScroller({ items }: Props) {
           New
         </h2>
         <Link
-          href="/terbaru"
+          href="/daftar-komik"
           className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
         >
           View More
